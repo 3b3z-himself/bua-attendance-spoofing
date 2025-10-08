@@ -1,0 +1,21 @@
+{
+  "name": "geolocation-spoofer",
+  "version": "1.0.0",
+  "description": "Desktop app to spoof IP-based geolocation",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "keywords": ["geolocation", "spoof", "proxy"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "electron": "^27.0.0",
+    "http-proxy": "^1.18.1",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "electron": "^27.0.0"
+  }
+}

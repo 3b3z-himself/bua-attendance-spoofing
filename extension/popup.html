@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Geolocation Spoofer</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🌍 Geolocation Spoofer</h1>
+    
+    <div class="status">
+      <span id="status-text">Status: Disabled</span>
+      <label class="switch">
+        <input type="checkbox" id="toggle-spoof">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="form-group">
+      <label for="location-name">Location Name:</label>
+      <input type="text" id="location-name" placeholder="e.g., New York City">
+    </div>
+
+    <div class="form-group">
+      <label for="latitude">Latitude:</label>
+      <input type="number" id="latitude" placeholder="e.g., 40.7128" step="0.0001" min="-90" max="90">
+    </div>
+
+    <div class="form-group">
+      <label for="longitude">Longitude:</label>
+      <input type="number" id="longitude" placeholder="e.g., -74.0060" step="0.0001" min="-180" max="180">
+    </div>
+
+    <div class="form-group">
+      <label for="accuracy">Accuracy (meters):</label>
+      <input type="number" id="accuracy" placeholder="e.g., 10" value="10" min="1">
+    </div>
+
+    <div class="buttons">
+      <button id="save-btn" class="btn btn-primary">Save Location</button>
+      <button id="preset-btn" class="btn btn-secondary">Load Preset</button>
+    </div>
+
+    <div id="preset-list" class="preset-list hidden">
+      <h3>Select a Preset Location:</h3>
+      <div class="preset-item" data-lat="40.7128" data-lng="-74.0060" data-name="New York City">
+        📍 New York City, USA
+      </div>
+      <div class="preset-item" data-lat="51.5074" data-lng="-0.1278" data-name="London">
+        📍 London, UK
+      </div>
+      <div class="preset-item" data-lat="48.8566" data-lng="2.3522" data-name="Paris">
+        📍 Paris, France
+      </div>
+      <div class="preset-item" data-lat="35.6762" data-lng="139.6503" data-name="Tokyo">
+        📍 Tokyo, Japan
+      </div>
+      <div class="preset-item" data-lat="-33.8688" data-lng="151.2093" data-name="Sydney">
+        📍 Sydney, Australia
+      </div>
+      <div class="preset-item" data-lat="37.7749" data-lng="-122.4194" data-name="San Francisco">
+        📍 San Francisco, USA
+      </div>
+      <div class="preset-item" data-lat="25.2048" data-lng="55.2708" data-name="Dubai">
+        📍 Dubai, UAE
+      </div>
+      <div class="preset-item" data-lat="-23.5505" data-lng="-46.6333" data-name="São Paulo">
+        📍 São Paulo, Brazil
+      </div>
+    </div>
+
+    <div class="current-location">
+      <h3>Current Spoofed Location:</h3>
+      <p id="current-info">No location set</p>
+    </div>
+
+    <div class="footer">
+      <p>⚠️ Refresh pages after changing settings</p>
+      <button id="test-btn" class="btn btn-secondary" style="margin-top: 10px; width: 100%;">🧪 Open Test Page</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
