@@ -9,6 +9,16 @@ let settings = {
   locationName: ''
 };
 
+// Store camera settings in memory
+let cameraSettings = {
+  enabled: false,
+  photo: null,
+  selectedCamera: null,
+  opacity: 100,
+  size: 100,
+  position: 'center'
+};
+
 // Load settings when extension starts
 chrome.storage.sync.get(['spoofEnabled', 'latitude', 'longitude', 'accuracy', 'locationName'], (result) => {
   if (result) {
@@ -20,6 +30,21 @@ chrome.storage.sync.get(['spoofEnabled', 'latitude', 'longitude', 'accuracy', 'l
       locationName: result.locationName || ''
     };
     console.log('Background: Settings loaded', settings);
+  }
+});
+
+// Load camera settings when extension starts
+chrome.storage.sync.get(['cameraOverlayEnabled', 'overlayPhoto', 'selectedCamera', 'overlayOpacity', 'overlaySize', 'overlayPosition'], (result) => {
+  if (result) {
+    cameraSettings = {
+      enabled: result.cameraOverlayEnabled || false,
+      photo: result.overlayPhoto || null,
+      selectedCamera: result.selectedCamera || null,
+      opacity: result.overlayOpacity || 100,
+      size: result.overlaySize || 100,
+      position: result.overlayPosition || 'center'
+    };
+    console.log('Background: Camera settings loaded', cameraSettings);
   }
 });
 
@@ -40,13 +65,40 @@ chrome.storage.onChanged.addListener((changes) => {
   if (changes.locationName) {
     settings.locationName = changes.locationName.newValue;
   }
+  
+  // Camera settings changes
+  if (changes.cameraOverlayEnabled) {
+    cameraSettings.enabled = changes.cameraOverlayEnabled.newValue;
+  }
+  if (changes.overlayPhoto) {
+    cameraSettings.photo = changes.overlayPhoto.newValue;
+  }
+  if (changes.selectedCamera) {
+    cameraSettings.selectedCamera = changes.selectedCamera.newValue;
+  }
+  if (changes.overlayOpacity) {
+    cameraSettings.opacity = changes.overlayOpacity.newValue;
+  }
+  if (changes.overlaySize) {
+    cameraSettings.size = changes.overlaySize.newValue;
+  }
+  if (changes.overlayPosition) {
+    cameraSettings.position = changes.overlayPosition.newValue;
+  }
+  
   console.log('Background: Settings updated', settings);
+  console.log('Background: Camera settings updated', cameraSettings);
 });
 
 // Listen for messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'getSettings') {
     sendResponse(settings);
+    return true;
+  }
+  
+  if (message.type === 'getCameraSettings') {
+    sendResponse(cameraSettings);
     return true;
   }
 });
@@ -61,6 +113,18 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
       chrome.action.setBadgeBackgroundColor({ color: '#28a745' });
     } else {
       chrome.action.setBadgeText({ text: '' });
+    }
+  }
+  
+  // Update badge for camera overlay
+  if (namespace === 'sync' && changes.cameraOverlayEnabled) {
+    const isCameraEnabled = changes.cameraOverlayEnabled.newValue;
+    
+    if (isCameraEnabled && settings.enabled) {
+      chrome.action.setBadgeText({ text: '📷' });
+    } else if (isCameraEnabled) {
+      chrome.action.setBadgeText({ text: '📷' });
+      chrome.action.setBadgeBackgroundColor({ color: '#007bff' });
     }
   }
 });

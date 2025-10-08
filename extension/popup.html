@@ -76,9 +76,63 @@
       <p id="current-info">No location set</p>
     </div>
 
+    <!-- Camera Overlay Section -->
+    <div class="camera-section">
+      <h2>📷 Camera Overlay</h2>
+      
+      <div class="status">
+        <span id="camera-status-text">Camera Overlay: Disabled</span>
+        <label class="switch">
+          <input type="checkbox" id="toggle-camera">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label for="photo-upload">Upload Photo:</label>
+        <input type="file" id="photo-upload" accept="image/*">
+        <div id="photo-preview" class="photo-preview hidden">
+          <img id="preview-img" src="" alt="Preview">
+          <button id="remove-photo" class="btn btn-danger">Remove Photo</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="camera-select">Camera Source:</label>
+        <select id="camera-select" class="form-control">
+          <option value="">Detect cameras...</option>
+        </select>
+        <button id="refresh-cameras" class="btn btn-secondary" style="margin-top: 5px;">🔄 Refresh Cameras</button>
+      </div>
+
+      <div class="form-group">
+        <label for="overlay-opacity">Overlay Opacity:</label>
+        <input type="range" id="overlay-opacity" min="0" max="100" value="100" class="slider-range">
+        <span id="opacity-value">100%</span>
+      </div>
+
+      <div class="form-group">
+        <label for="overlay-size">Overlay Size:</label>
+        <input type="range" id="overlay-size" min="50" max="150" value="100" class="slider-range">
+        <span id="size-value">100%</span>
+      </div>
+
+      <div class="form-group">
+        <label for="overlay-position">Overlay Position:</label>
+        <select id="overlay-position" class="form-control">
+          <option value="center">Center</option>
+          <option value="top-left">Top Left</option>
+          <option value="top-right">Top Right</option>
+          <option value="bottom-left">Bottom Left</option>
+          <option value="bottom-right">Bottom Right</option>
+        </select>
+      </div>
+    </div>
+
     <div class="footer">
       <p>⚠️ Refresh pages after changing settings</p>
       <button id="test-btn" class="btn btn-secondary" style="margin-top: 10px; width: 100%;">🧪 Open Test Page</button>
+      <button id="camera-test-btn" class="btn btn-secondary" style="margin-top: 5px; width: 100%;">📷 Test Camera Overlay</button>
     </div>
   </div>
 

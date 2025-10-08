@@ -245,3 +245,86 @@ input:checked + .slider:before {
 .preset-list::-webkit-scrollbar-thumb:hover {
   background: #5568d3;
 }
+
+/* Camera Overlay Section */
+.camera-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 2px solid #e0e0e0;
+}
+
+.camera-section h2 {
+  font-size: 20px;
+  margin-bottom: 15px;
+  text-align: center;
+  color: #667eea;
+}
+
+.photo-preview {
+  margin-top: 10px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.photo-preview.hidden {
+  display: none;
+}
+
+.photo-preview img {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+  transform: translateY(-2px);
+}
+
+.form-control {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  transition: border-color 0.3s;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.slider-range {
+  width: calc(100% - 60px);
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+.form-group span {
+  display: inline-block;
+  min-width: 50px;
+  font-weight: 600;
+  color: #667eea;
+}
+
+input[type="file"] {
+  padding: 8px;
+  font-size: 13px;
+}

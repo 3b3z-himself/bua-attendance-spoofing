@@ -36,7 +36,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["test.html", "test.js", "inject.js"],
+      "resources": ["test.html", "test.js", "inject.js", "camera-test.html"],
       "matches": ["<all_urls>"]
     }
   ]

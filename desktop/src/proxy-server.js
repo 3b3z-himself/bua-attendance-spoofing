@@ -56,10 +56,17 @@ class ProxyServer {
   handleConnect(req, clientSocket, head) {
     const { hostname, port } = this.parseHostPort(req.url);
     
-    console.log(`[CONNECT] ${hostname}:${port}`);
+    // Check if this is a known geolocation API over HTTPS
+    const isGeoAPI = this.isGeoAPIRequest(hostname);
+    
+    if (isGeoAPI) {
+      console.log(`[⚠️  HTTPS GEO API] ${hostname}:${port} - Cannot intercept HTTPS without certificate`);
+      console.log(`[TIP] Use the browser extension for JavaScript geolocation API spoofing`);
+    } else {
+      console.log(`[CONNECT] ${hostname}:${port}`);
+    }
 
-    // Check if this is a geolocation API - if so, we can't easily intercept HTTPS
-    // Most geo APIs work over HTTP anyway, so this is fine
+    // Tunnel the connection (can't intercept HTTPS without MITM certificate)
     const serverSocket = net.connect(port || 443, hostname, () => {
       clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
       serverSocket.write(head);
@@ -218,9 +225,16 @@ class ProxyServer {
       console.log(`[PROXY] ${clientReq.method} ${targetUrl.hostname}${targetUrl.pathname}`);
 
       const proxyReq = protocol.request(options, (proxyRes) => {
-        // Forward the response
-        clientRes.writeHead(proxyRes.statusCode, proxyRes.headers);
-        proxyRes.pipe(clientRes);
+        const contentType = proxyRes.headers['content-type'] || '';
+        
+        // If JSON response, inspect it for geolocation data
+        if (contentType.includes('application/json')) {
+          this.inspectJSONResponse(proxyRes, clientRes, targetUrl);
+        } else {
+          // Forward non-JSON responses directly
+          clientRes.writeHead(proxyRes.statusCode, proxyRes.headers);
+          proxyRes.pipe(clientRes);
+        }
       });
 
       proxyReq.on('error', (err) => {
@@ -241,6 +255,80 @@ class ProxyServer {
         clientRes.end('Internal Proxy Error');
       }
     }
+  }
+
+  inspectJSONResponse(proxyRes, clientRes, targetUrl) {
+    let body = '';
+    
+    proxyRes.on('data', (chunk) => {
+      body += chunk.toString();
+    });
+
+    proxyRes.on('end', () => {
+      try {
+        // Try to parse the JSON
+        const jsonData = JSON.parse(body);
+        
+        // Check if this JSON contains geolocation data
+        if (this.isGeoLocationData(jsonData)) {
+          this.interceptCount++;
+          console.log(`[SMART INTERCEPT #${this.interceptCount}] Detected geo data in ${targetUrl.hostname}${targetUrl.pathname}`);
+          console.log(`[DETECTED FIELDS] ${Object.keys(jsonData).join(', ')}`);
+          
+          // Replace with spoofed data
+          this.sendSpoofedResponse(clientRes);
+        } else {
+          // Not geolocation data, forward original response
+          clientRes.writeHead(proxyRes.statusCode, proxyRes.headers);
+          clientRes.end(body);
+        }
+      } catch (e) {
+        // Invalid JSON, forward as-is
+        clientRes.writeHead(proxyRes.statusCode, proxyRes.headers);
+        clientRes.end(body);
+      }
+    });
+
+    proxyRes.on('error', (err) => {
+      console.error('Response error:', err.message);
+      if (!clientRes.headersSent) {
+        clientRes.writeHead(500);
+        clientRes.end('Error reading response');
+      }
+    });
+  }
+
+  isGeoLocationData(jsonData) {
+    if (!jsonData || typeof jsonData !== 'object') {
+      return false;
+    }
+
+    // Check for common geolocation fields
+    const geoFields = [
+      'latitude', 'longitude', 'lat', 'lon', 'lng',
+      'city', 'country', 'country_code', 'country_name',
+      'region', 'postal', 'zip', 'timezone',
+      'location', 'coordinates', 'geo'
+    ];
+
+    // Count how many geo-related fields are present
+    let geoFieldCount = 0;
+    const keys = Object.keys(jsonData);
+    
+    for (const key of keys) {
+      const keyLower = key.toLowerCase();
+      if (geoFields.some(field => keyLower.includes(field))) {
+        geoFieldCount++;
+      }
+    }
+
+    // If 3+ geolocation fields present, it's likely geolocation data
+    const hasGeoFields = geoFieldCount >= 3;
+
+    // Also check for IP field (common in geo APIs)
+    const hasIPField = keys.some(key => key.toLowerCase() === 'ip' || key.toLowerCase() === 'query');
+
+    return hasGeoFields || (geoFieldCount >= 2 && hasIPField);
   }
 }
 
