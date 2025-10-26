@@ -5,16 +5,31 @@
   const originalGeolocation = navigator.geolocation;
   const originalGetCurrentPosition = navigator.geolocation.getCurrentPosition;
   const originalWatchPosition = navigator.geolocation.watchPosition;
+  
+  // Track watch IDs to manage them properly
+  const watchIds = new Map();
+  let nextWatchId = 1;
 
   // Function to get settings from the extension
   function getSettings() {
     return new Promise((resolve) => {
       window.postMessage({ type: 'getGeolocationSettings' }, '*');
 
+      const timeout = setTimeout(() => {
+        console.warn('⚠️ Geolocation settings timeout - using fallback');
+        resolve({
+          enabled: false,
+          latitude: null,
+          longitude: null,
+          accuracy: 10
+        });
+      }, 2000);
+
       function handleMessage(event) {
         if (event.data.type === 'geolocationSettings') {
+          clearTimeout(timeout);
           window.removeEventListener('message', handleMessage);
-          resolve(event.data.settings);
+          resolve(event.data.settings || {});
         }
       }
 
@@ -27,71 +42,101 @@
     try {
       const settings = await getSettings();
 
-      if (settings && settings.enabled) {
-        console.log('🌍 Geolocation Override Active:', settings.locationName);
-        console.log('🌍 Returning FAKE location:', settings.latitude, settings.longitude);
+      if (settings && settings.enabled && settings.latitude !== null && settings.longitude !== null) {
+        const fakeCoords = {
+          latitude: parseFloat(settings.latitude),
+          longitude: parseFloat(settings.longitude),
+          accuracy: parseFloat(settings.accuracy) || 10,
+          altitude: null,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null
+        };
+        
+        console.log('🌍 ====== GEOLOCATION SPOOFING ACTIVE ======');
+        console.log('🌍 Location Name:', settings.locationName || 'Custom Location');
+        console.log('🌍 Latitude:', fakeCoords.latitude);
+        console.log('🌍 Longitude:', fakeCoords.longitude);
+        console.log('🌍 Accuracy:', fakeCoords.accuracy + 'm');
+        console.log('🌍 Timestamp:', new Date().toLocaleString());
+        console.log('🌍 ==========================================');
         
         // Return spoofed location
         success({
-          coords: {
-            latitude: settings.latitude,
-            longitude: settings.longitude,
-            accuracy: settings.accuracy,
-            altitude: null,
-            altitudeAccuracy: null,
-            heading: null,
-            speed: null
-          },
+          coords: fakeCoords,
           timestamp: Date.now()
         });
       } else {
         // Use original geolocation if not enabled
+        console.log('🌍 ⚠️ Geolocation spoofing disabled - using real location');
         originalGetCurrentPosition.call(originalGeolocation, success, error, options);
       }
     } catch (err) {
+      console.error('🌍 ❌ Geolocation error:', err);
       // Fallback to original if something goes wrong
       originalGetCurrentPosition.call(originalGeolocation, success, error, options);
     }
   };
 
-  // Override watchPosition
+  // Override watchPosition - improved with proper cleanup
   navigator.geolocation.watchPosition = async function(success, error, options) {
     try {
       const settings = await getSettings();
+      const watchId = nextWatchId++;
 
-      if (settings && settings.enabled) {
-        console.log('🌍 Watching FAKE location:', settings.latitude, settings.longitude);
+      if (settings && settings.enabled && settings.latitude !== null && settings.longitude !== null) {
+        const fakeCoords = {
+          latitude: parseFloat(settings.latitude),
+          longitude: parseFloat(settings.longitude),
+          accuracy: parseFloat(settings.accuracy) || 10,
+          altitude: null,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null
+        };
         
-        // Return spoofed location
-        const watchId = setInterval(() => {
+        console.log('🌍 ====== GEOLOCATION WATCH STARTED ======');
+        console.log('🌍 Watch ID:', watchId);
+        console.log('🌍 Location Name:', settings.locationName || 'Custom Location');
+        console.log('🌍 Latitude:', fakeCoords.latitude);
+        console.log('🌍 Longitude:', fakeCoords.longitude);
+        console.log('🌍 Accuracy:', fakeCoords.accuracy + 'm');
+        console.log('🌍 =======================================');
+        
+        // Return spoofed location repeatedly
+        const intervalId = setInterval(() => {
           success({
-            coords: {
-              latitude: settings.latitude,
-              longitude: settings.longitude,
-              accuracy: settings.accuracy,
-              altitude: null,
-              altitudeAccuracy: null,
-              heading: null,
-              speed: null
-            },
+            coords: fakeCoords,
             timestamp: Date.now()
           });
         }, 1000);
 
-        // Return watch ID for clearWatch
+        // Store interval ID for later clearing
+        watchIds.set(watchId, intervalId);
         return watchId;
       } else {
         // Use original geolocation if not enabled
+        console.log('🌍 ⚠️ Geolocation spoofing disabled - using real location watch');
         return originalWatchPosition.call(originalGeolocation, success, error, options);
       }
     } catch (err) {
+      console.error('🌍 ❌ Watch position error:', err);
       // Fallback to original if something goes wrong
       return originalWatchPosition.call(originalGeolocation, success, error, options);
     }
   };
 
-  // Keep original clearWatch method
-  navigator.geolocation.clearWatch = originalGeolocation.clearWatch;
+  // Override clearWatch to properly clean up our intervals
+  navigator.geolocation.clearWatch = function(watchId) {
+    if (watchIds.has(watchId)) {
+      clearInterval(watchIds.get(watchId));
+      watchIds.delete(watchId);
+      console.log('🌍 Watch cleared:', watchId);
+    } else {
+      // If it's not one of ours, call the original
+      originalGeolocation.clearWatch.call(originalGeolocation, watchId);
+    }
+  };
 
   console.log('[🌍 Geolocation Spoofer] API override script loaded');
 

@@ -93,11 +93,19 @@ chrome.storage.onChanged.addListener((changes) => {
 // Listen for messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'getSettings') {
+    console.log('💾 [background.js] Settings requested:', {
+      enabled: settings.enabled,
+      locationName: settings.locationName,
+      latitude: settings.latitude,
+      longitude: settings.longitude,
+      accuracy: settings.accuracy
+    });
     sendResponse(settings);
     return true;
   }
   
   if (message.type === 'getCameraSettings') {
+    console.log('📷 [background.js] Camera settings requested:', cameraSettings);
     sendResponse(cameraSettings);
     return true;
   }

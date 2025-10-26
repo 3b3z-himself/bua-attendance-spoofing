@@ -28,6 +28,14 @@ cameraTestBtn.addEventListener('click', () => {
   });
 });
 
+// Open iframe test page
+const iframeTestBtn = document.getElementById('iframe-test-btn');
+iframeTestBtn.addEventListener('click', () => {
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('iframe-test.html')
+  });
+});
+
 // Load saved settings
 chrome.storage.sync.get(['spoofEnabled', 'locationName', 'latitude', 'longitude', 'accuracy'], (result) => {
   toggleSpoof.checked = result.spoofEnabled || false;
