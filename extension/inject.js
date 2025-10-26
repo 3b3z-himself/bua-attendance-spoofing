@@ -11,29 +11,62 @@
   let nextWatchId = 1;
 
   // Function to get settings from the extension
+  // Using localStorage as a fallback for cross-origin iframe issues
   function getSettings() {
     return new Promise((resolve) => {
-      window.postMessage({ type: 'getGeolocationSettings' }, '*');
-
-      const timeout = setTimeout(() => {
-        console.warn('⚠️ Geolocation settings timeout - using fallback');
-        resolve({
-          enabled: false,
-          latitude: null,
-          longitude: null,
-          accuracy: 10
-        });
-      }, 2000);
+      let resolved = false;
+      let attemptCount = 0;
+      const maxAttempts = 10;
+      
+      function tryGetSettings() {
+        attemptCount++;
+        
+        // First, try to get settings from localStorage (set by content.js)
+        try {
+          const stored = localStorage.getItem('__geo_spoof_settings__');
+          if (stored && !resolved) {
+            resolved = true;
+            console.log('✓ Geolocation settings from localStorage:', JSON.parse(stored));
+            resolve(JSON.parse(stored));
+            return;
+          }
+        } catch (e) {
+          // localStorage might be blocked in some contexts
+        }
+        
+        // If localStorage failed or doesn't have settings yet, request via postMessage
+        if (attemptCount === 1) {
+          window.postMessage({ type: 'getGeolocationSettings' }, '*');
+        }
+        
+        // Retry up to maxAttempts times with exponential backoff
+        if (attemptCount < maxAttempts) {
+          setTimeout(tryGetSettings, 100 * attemptCount); // 100ms, 200ms, 300ms...
+        } else if (!resolved) {
+          resolved = true;
+          console.warn('⚠️ Geolocation settings timeout - using real location');
+          resolve({
+            enabled: false,
+            latitude: null,
+            longitude: null,
+            accuracy: 10
+          });
+        }
+      }
 
       function handleMessage(event) {
-        if (event.data.type === 'geolocationSettings') {
-          clearTimeout(timeout);
+        if (event.data.type === 'geolocationSettings' && !resolved) {
+          resolved = true;
           window.removeEventListener('message', handleMessage);
+          console.log('✓ Geolocation settings received via postMessage:', event.data.settings);
           resolve(event.data.settings || {});
         }
       }
 
       window.addEventListener('message', handleMessage);
+      
+      // Start attempting to get settings
+      tryGetSettings();
     });
   }
 

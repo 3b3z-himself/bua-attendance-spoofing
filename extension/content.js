@@ -8,6 +8,27 @@ script.onload = () => {
 
 console.log('🌍 Geolocation spoofer initializing...');
 
+// Pre-load settings into localStorage so inject.js can access them immediately
+// This is critical for cross-origin iframe scenarios where postMessage might be blocked
+function preloadSettingsToLocalStorage() {
+  chrome.runtime.sendMessage({ type: 'getSettings' }, (response) => {
+    if (!chrome.runtime.lastError && response) {
+      try {
+        localStorage.setItem('__geo_spoof_settings__', JSON.stringify(response));
+        console.log('✓ Settings pre-loaded to localStorage:', response);
+      } catch (e) {
+        console.warn('⚠️ Could not pre-load settings to localStorage:', e.message);
+      }
+    }
+  });
+}
+
+// Pre-load settings immediately on page load
+preloadSettingsToLocalStorage();
+
+// Also re-load settings periodically to ensure they're fresh
+setInterval(preloadSettingsToLocalStorage, 2000);
+
 // Function to recursively inject script into all iframes (including nested ones)
 function injectScriptIntoFrames() {
   try {
@@ -256,10 +277,53 @@ window.addEventListener('message', (event) => {
   if (event.data.type === 'getGeolocationSettings') {
     console.log('📬 [content.js] Received settings request from inject.js');
     
-    // Request settings from background script
+    // Request settings from background script with better error handling
     chrome.runtime.sendMessage({ type: 'getSettings' }, (response) => {
+      // Handle chrome runtime errors
       if (chrome.runtime.lastError) {
-        console.warn('⚠️ [content.js] Chrome runtime error:', chrome.runtime.lastError);
+        console.warn('⚠️ [content.js] Chrome runtime error:', chrome.runtime.lastError.message);
+        // Send empty settings if error occurs
+        const fallback = {
+          enabled: false,
+          latitude: null,
+          longitude: null,
+          accuracy: 10,
+          locationName: ''
+        };
+        window.postMessage({
+          type: 'geolocationSettings',
+          settings: fallback
+        }, '*');
+        
+        // Also try to store in localStorage as backup
+        try {
+          localStorage.setItem('__geo_spoof_settings__', JSON.stringify(fallback));
+        } catch (e) {
+          console.warn('Could not store settings in localStorage');
+        }
+        return;
+      }
+      
+      if (!response) {
+        console.warn('⚠️ [content.js] No response from background script');
+        const fallback = {
+          enabled: false,
+          latitude: null,
+          longitude: null,
+          accuracy: 10,
+          locationName: ''
+        };
+        window.postMessage({
+          type: 'geolocationSettings',
+          settings: fallback
+        }, '*');
+        
+        // Also try to store in localStorage as backup
+        try {
+          localStorage.setItem('__geo_spoof_settings__', JSON.stringify(fallback));
+        } catch (e) {
+          console.warn('Could not store settings in localStorage');
+        }
         return;
       }
       
@@ -272,12 +336,22 @@ window.addEventListener('message', (event) => {
         accuracy: response?.accuracy
       });
       
-      // Send settings back to the injected script
+      // Send settings back to the injected script via postMessage
       window.postMessage({
         type: 'geolocationSettings',
         settings: response
       }, '*');
+      
+      // ALSO store in localStorage as a backup for iframe contexts where postMessage might be blocked
+      try {
+        localStorage.setItem('__geo_spoof_settings__', JSON.stringify(response));
+        console.log('✓ Settings stored in localStorage as backup');
+      } catch (e) {
+        console.warn('⚠️ Could not store settings in localStorage:', e.message);
+      }
     });
+    
+    return true; // Keep the message channel open
   }
   
   if (event.data.type === 'getCameraSettings') {
@@ -289,9 +363,11 @@ window.addEventListener('message', (event) => {
       }
       window.postMessage({
         type: 'cameraSettings',
-        settings: response
+        settings: response || {}
       }, '*');
     });
+    
+    return true;
   }
 });
 

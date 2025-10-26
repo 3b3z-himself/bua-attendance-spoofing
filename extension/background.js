@@ -1,6 +1,6 @@
 // Background service worker for the extension
 
-// Store settings in memory
+// Store settings in memory with defaults
 let settings = {
   enabled: false,
   latitude: null,
@@ -9,7 +9,7 @@ let settings = {
   locationName: ''
 };
 
-// Store camera settings in memory
+// Store camera settings in memory with defaults
 let cameraSettings = {
   enabled: false,
   photo: null,
@@ -18,6 +18,10 @@ let cameraSettings = {
   size: 100,
   position: 'center'
 };
+
+// Flag to track if settings are loaded
+let settingsLoaded = false;
+let cameraSettingsLoaded = false;
 
 // Load settings when extension starts
 chrome.storage.sync.get(['spoofEnabled', 'latitude', 'longitude', 'accuracy', 'locationName'], (result) => {
@@ -29,7 +33,11 @@ chrome.storage.sync.get(['spoofEnabled', 'latitude', 'longitude', 'accuracy', 'l
       accuracy: result.accuracy || 10,
       locationName: result.locationName || ''
     };
+    settingsLoaded = true;
     console.log('Background: Settings loaded', settings);
+  } else {
+    settingsLoaded = true;
+    console.log('Background: No stored settings, using defaults');
   }
 });
 
@@ -44,7 +52,11 @@ chrome.storage.sync.get(['cameraOverlayEnabled', 'overlayPhoto', 'selectedCamera
       size: result.overlaySize || 100,
       position: result.overlayPosition || 'center'
     };
+    cameraSettingsLoaded = true;
     console.log('Background: Camera settings loaded', cameraSettings);
+  } else {
+    cameraSettingsLoaded = true;
+    console.log('Background: No stored camera settings, using defaults');
   }
 });
 
@@ -92,6 +104,8 @@ chrome.storage.onChanged.addListener((changes) => {
 
 // Listen for messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('[background.js] Received message:', message.type);
+  
   if (message.type === 'getSettings') {
     console.log('💾 [background.js] Settings requested:', {
       enabled: settings.enabled,
@@ -100,15 +114,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       longitude: settings.longitude,
       accuracy: settings.accuracy
     });
+    // Always send response, even if settings aren't loaded yet
     sendResponse(settings);
     return true;
   }
   
   if (message.type === 'getCameraSettings') {
     console.log('📷 [background.js] Camera settings requested:', cameraSettings);
+    // Always send response
     sendResponse(cameraSettings);
     return true;
   }
+  
+  // Return true to keep the message channel open for async responses
+  return true;
 });
 
 // Update badge when spoofing is enabled/disabled
