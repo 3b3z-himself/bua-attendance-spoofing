@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Geolocation Spoofer",
+  "name": "BUA Geolocation Spoofer",
   "version": "1.0.0",
-  "description": "Spoof your geolocation to any location worldwide",
+  "description": "Spoof your geolocation for BUA attendance.",
   "permissions": [
     "storage",
     "activeTab"

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Geolocation Spoofer</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Badr Uni Geolocation Spoofer</h1>
+
+      <div class="status">
+        <span id="status-text">Status: Disabled</span>
+        <label class="switch">
+          <input type="checkbox" id="toggle-spoof" />
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label for="location-name">Location Name:</label>
+        <input type="text" id="location-name" placeholder="e.g., AI, BUA" />
+      </div>
+
+      <div class="form-group">
+        <label for="latitude">Latitude:</label>
+        <input
+          type="number"
+          id="latitude"
+          placeholder="e.g., 40.7128"
+          step="0.0001"
+          min="-90"
+          max="90"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="longitude">Longitude:</label>
+        <input
+          type="number"
+          id="longitude"
+          placeholder="e.g., -74.0060"
+          step="0.0001"
+          min="-180"
+          max="180"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="accuracy">Accuracy (meters):</label>
+        <input
+          type="number"
+          id="accuracy"
+          placeholder="e.g., 10"
+          value="10"
+          min="1"
+        />
+      </div>
+
+      <div class="buttons">
+        <button id="save-btn" class="btn btn-primary">Save Location</button>
+        <button id="preset-btn" class="btn btn-secondary">Load Preset</button>
+      </div>
+
+      <div id="preset-list" class="preset-list hidden">
+        <h3>Select a Preset Location:</h3>
+        <div
+          class="preset-item"
+          data-lat="27.087322"
+          data-lng="31.069892"
+          data-name="AI, BUA"
+        >
+          📍 AI, BUA
+        </div>
+      </div>
+
+      <div class="current-location">
+        <h3>Current Spoofed Location:</h3>
+        <p id="current-info">No location set</p>
+      </div>
+
+      <div class="footer">
+        <p>⚠️ Refresh pages after changing settings</p>
+      </div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

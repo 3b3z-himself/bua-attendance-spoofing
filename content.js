@@ -8,8 +8,6 @@ script.onload = () => {
 
 console.log('🌍 Geolocation spoofer initializing...');
 
-// Pre-load settings into localStorage so inject.js can access them immediately
-// This is critical for cross-origin iframe scenarios where postMessage might be blocked
 function preloadSettingsToLocalStorage() {
   chrome.runtime.sendMessage({ type: 'getSettings' }, (response) => {
     if (!chrome.runtime.lastError && response) {
@@ -29,30 +27,26 @@ preloadSettingsToLocalStorage();
 // Also re-load settings periodically to ensure they're fresh
 setInterval(preloadSettingsToLocalStorage, 2000);
 
-// Function to recursively inject script into all iframes (including nested ones)
+// Recursively inject script into all iframes (including nested ones)
 function injectScriptIntoFrames() {
   try {
     const frames = document.querySelectorAll('iframe');
     
     frames.forEach((iframe, index) => {
       try {
-        // Try to access iframe's content document
         const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
         
         if (!iframeDoc) {
           console.warn(`⚠️ Cannot access iframe #${index} (${iframe.id || 'unnamed'}) - might be cross-origin or not loaded yet`);
-          // Schedule retry for later
           scheduleIframeRetry(iframe, index);
           return;
         }
         
-        // Check if script already injected
         if (iframeDoc.querySelector('script[data-geo-spoof]')) {
           console.log(`✓ Geolocation script already in iframe #${index} (${iframe.id || 'unnamed'})`);
           return;
         }
         
-        // Create and inject script into iframe
         const iframeScript = iframeDoc.createElement('script');
         iframeScript.src = chrome.runtime.getURL('inject.js');
         iframeScript.setAttribute('data-geo-spoof', 'true');
@@ -63,12 +57,10 @@ function injectScriptIntoFrames() {
         (iframeDoc.head || iframeDoc.documentElement).appendChild(iframeScript);
         console.log(`✓ Geolocation script injected into iframe #${index} (${iframe.id || 'unnamed'})`);
         
-        // Recursively check for nested iframes
         injectScriptIntoNestedFrames(iframeDoc, index);
         
       } catch (err) {
         console.warn(`⚠️ Error injecting script into iframe #${index} (${iframe.id || 'unnamed'}):`, err.message);
-        // Schedule retry
         scheduleIframeRetry(iframe, index);
       }
     });
@@ -80,14 +72,14 @@ function injectScriptIntoFrames() {
 // Track retries to avoid infinite loops
 const retryTracker = new WeakMap();
 
-// Function to retry iframe injection after a delay
+// Retry iframe injection after a delay with exponential backoff
 function scheduleIframeRetry(iframe, index, attempt = 1) {
   if (attempt > 3) {
     console.warn(`⚠️ Max retries exceeded for iframe #${index}`);
     return;
   }
   
-  const delay = Math.min(1000 * attempt, 3000); // Exponential backoff: 1s, 2s, 3s
+  const delay = Math.min(1000 * attempt, 3000);
   
   setTimeout(() => {
     try {
@@ -106,11 +98,9 @@ function scheduleIframeRetry(iframe, index, attempt = 1) {
         (iframeDoc.head || iframeDoc.documentElement).appendChild(iframeScript);
         console.log(`✓ Geolocation script injected into iframe #${index} on retry`);
         
-        // Check for nested iframes
         injectScriptIntoNestedFrames(iframeDoc, index);
       }
     } catch (err) {
-      // Schedule another retry if still failing
       scheduleIframeRetry(iframe, index, attempt + 1);
     }
   }, delay);
@@ -133,17 +123,15 @@ function injectScriptIntoNestedFrames(parentDoc, parentIndex, depth = 1) {
         const nestedDoc = nestedIframe.contentDocument || nestedIframe.contentWindow?.document;
         
         if (!nestedDoc) {
-          console.warn(`⚠️ Cannot access nested iframe [${parentIndex}.${index}] (${nestedIframe.id || 'unnamed'}) - might be cross-origin or not loaded yet`);
+          console.warn(`⚠️ Cannot access nested iframe [${parentIndex}.${index}]`);
           return;
         }
         
-        // Check if script already injected
         if (nestedDoc.querySelector('script[data-geo-spoof]')) {
           console.log(`✓ Geolocation script already in nested iframe [${parentIndex}.${index}]`);
           return;
         }
         
-        // Inject script into nested iframe
         const nestedScript = nestedDoc.createElement('script');
         nestedScript.src = chrome.runtime.getURL('inject.js');
         nestedScript.setAttribute('data-geo-spoof', 'true');
@@ -154,7 +142,6 @@ function injectScriptIntoNestedFrames(parentDoc, parentIndex, depth = 1) {
         (nestedDoc.head || nestedDoc.documentElement).appendChild(nestedScript);
         console.log(`✓ Geolocation script injected into nested iframe [${parentIndex}.${index}]`);
         
-        // Recursively check for deeper nested iframes
         injectScriptIntoNestedFrames(nestedDoc, `${parentIndex}.${index}`, depth + 1);
         
       } catch (err) {
@@ -177,13 +164,12 @@ function waitForIframeAndInject(iframe, selector, maxAttempts = 10) {
       const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
       if (iframeDoc && iframeDoc.readyState === 'complete') {
         clearInterval(checkInterval);
-        // Give it an extra moment to ensure scripts are loaded
         setTimeout(() => {
           injectScriptIntoFrames();
         }, 100);
       }
     } catch (err) {
-      // Still cross-origin or not accessible
+      // Ignore cross-origin or inaccessible iframes
     }
     
     if (attempts >= maxAttempts) {
@@ -269,20 +255,15 @@ observer.observe(document.documentElement, {
 
 console.log('✓ Geolocation spoofer content script initialized with iframe support');
 
-// Listen for messages from the injected script
 window.addEventListener('message', (event) => {
-  // Only accept messages from the same frame
   if (event.source !== window) return;
 
   if (event.data.type === 'getGeolocationSettings') {
     console.log('📬 [content.js] Received settings request from inject.js');
     
-    // Request settings from background script with better error handling
     chrome.runtime.sendMessage({ type: 'getSettings' }, (response) => {
-      // Handle chrome runtime errors
       if (chrome.runtime.lastError) {
         console.warn('⚠️ [content.js] Chrome runtime error:', chrome.runtime.lastError.message);
-        // Send empty settings if error occurs
         const fallback = {
           enabled: false,
           latitude: null,
@@ -295,7 +276,6 @@ window.addEventListener('message', (event) => {
           settings: fallback
         }, '*');
         
-        // Also try to store in localStorage as backup
         try {
           localStorage.setItem('__geo_spoof_settings__', JSON.stringify(fallback));
         } catch (e) {
@@ -318,7 +298,6 @@ window.addEventListener('message', (event) => {
           settings: fallback
         }, '*');
         
-        // Also try to store in localStorage as backup
         try {
           localStorage.setItem('__geo_spoof_settings__', JSON.stringify(fallback));
         } catch (e) {
@@ -327,7 +306,6 @@ window.addEventListener('message', (event) => {
         return;
       }
       
-      // Log the settings being sent
       console.log('📤 [content.js] Sending settings to inject.js:', {
         enabled: response?.enabled,
         locationName: response?.locationName,
@@ -336,87 +314,18 @@ window.addEventListener('message', (event) => {
         accuracy: response?.accuracy
       });
       
-      // Send settings back to the injected script via postMessage
       window.postMessage({
         type: 'geolocationSettings',
         settings: response
       }, '*');
       
-      // ALSO store in localStorage as a backup for iframe contexts where postMessage might be blocked
       try {
         localStorage.setItem('__geo_spoof_settings__', JSON.stringify(response));
-        console.log('✓ Settings stored in localStorage as backup');
       } catch (e) {
         console.warn('⚠️ Could not store settings in localStorage:', e.message);
       }
     });
     
-    return true; // Keep the message channel open
-  }
-  
-  if (event.data.type === 'getCameraSettings') {
-    // Request camera overlay settings
-    chrome.runtime.sendMessage({ type: 'getCameraSettings' }, (response) => {
-      if (chrome.runtime.lastError) {
-        console.warn('Chrome runtime error:', chrome.runtime.lastError);
-        return;
-      }
-      window.postMessage({
-        type: 'cameraSettings',
-        settings: response || {}
-      }, '*');
-    });
-    
     return true;
-  }
-});
-
-// Listen for messages from the popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === 'getCameras') {
-    console.log('📷 Content script: Requesting camera list from page');
-    
-    // Forward request to the page
-    window.postMessage({ type: 'requestCameraList' }, '*');
-    
-    // Set timeout for response
-    let timeoutId;
-    let responded = false;
-    
-    // Wait for response
-    const handler = (event) => {
-      if (event.source !== window) return;
-      if (event.data.type === 'cameraList') {
-        if (!responded) {
-          responded = true;
-          clearTimeout(timeoutId);
-          window.removeEventListener('message', handler);
-          
-          console.log('📷 Content script: Received camera list', event.data.cameras);
-          sendResponse({ 
-            cameras: event.data.cameras || [],
-            success: event.data.success !== false
-          });
-        }
-      }
-    };
-    
-    window.addEventListener('message', handler);
-    
-    // Timeout after 5 seconds
-    timeoutId = setTimeout(() => {
-      if (!responded) {
-        responded = true;
-        window.removeEventListener('message', handler);
-        console.error('📷 Content script: Camera list request timed out');
-        sendResponse({ 
-          cameras: [],
-          success: false,
-          error: 'Request timed out'
-        });
-      }
-    }, 5000);
-    
-    return true; // Keep channel open for async response
   }
 });
